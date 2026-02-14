@@ -4,9 +4,5 @@
     "api/inquiry.js": {
       "runtime": "nodejs20.x"
     }
-  },
-  "routes": [
-    { "src": "/api/.*", "dest": "/api/inquiry.js" },
-    { "handle": "filesystem" }
-  ]
+  }
 }
