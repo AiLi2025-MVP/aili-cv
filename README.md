@@ -1,59 +1,64 @@
 # Lateef Cobb – AI-Native Governance Site
 
-A luxury editorial microsite for Lateef Cobb that serves static assets securely and relays private inquiries to Mailchimp (while optionally keeping a local JSON log if Mailchimp is not configured).
+A luxury editorial microsite for Lateef Cobb that serves static assets from `/public` and relays private inquiries through a Vercel-ready serverless API with Mailchimp + optional webhook delivery.
 
 ## Features
 
-- Fully responsive static experience with cinematic motion cues.
-- Secure Node.js server that serves the site with hardened headers.
-- `/api/inquiry` endpoint validates submissions, relays them to Mailchimp, and stores a local JSON log.
-- Configurable API base + CORS headers so the static site can talk to a remote backend domain in production.
-- Front-end contact form with async submission, honeypot spam protection, and status messaging.
+- Cinematic, responsive landing page tailored to high-profile clientele.
+- Contact form with honeypot, async submission state, and graceful fallbacks.
+- `api/inquiry.js` serverless handler (Node 20) that validates payloads, enforces CORS, relays to Mailchimp, and optionally pings a webhook (Zapier/Slack/etc.).
+- `vercel.json` config so Vercel deploys the API on Node 20 while serving `/public` as static assets.
+- Lightweight `server.js` for local-only development (static hosting + hot reload via `npm run dev`).
 
-## Getting Started
+## Local Development
 
-1. **Install dependencies** (none are required beyond Node.js 16+).
-2. Copy the example environment file and fill it with your Mailchimp credentials:
+1. Ensure Node.js 18+ is installed.
+2. Copy the environment template and add your secrets:
    ```bash
    cp .env.example .env
    ```
-   - `MAILCHIMP_API_KEY`: A Mailchimp API key with access to your target audience.
-   - `MAILCHIMP_SERVER_PREFIX`: The dc value from your API key (e.g., `us1`).
-   - `MAILCHIMP_LIST_ID`: The audience/list ID that should receive inquiries.
-   - `PORT` (optional): Port for the HTTP server (defaults to `3000`).
-   - `ALLOWED_ORIGINS` (optional): Comma-delimited list of origins permitted to call `/api/inquiry` (set to `https://yourdomain.com` when front end and backend are split).
-3. Start the server:
+   Populate:
+   - `MAILCHIMP_API_KEY`, `MAILCHIMP_SERVER_PREFIX`, `MAILCHIMP_LIST_ID`
+   - `ALLOWED_ORIGINS` (comma-separated list of origins allowed to call the API)
+   - `INQUIRY_WEBHOOK_URL` (optional secondary relay)
+3. Start the static dev server:
    ```bash
    npm run dev
    ```
-   Visit `http://localhost:3000` to view the site.
+   Browse `http://localhost:3000`. The front-end posts to the `data-api-base` attribute on `<body>` (defaults to `/api`), so when running locally with Vercel CLI the same code works without changes.
 
-> The server writes a copy of each inquiry to `data/inquiries.json` so there is always an offline record. Keep that file secure.
+## Deploying on Vercel
 
-## Deployment Notes
+1. Push this repo to GitHub (e.g., `github.com/AiLi2025-MVP/aili-cv`).
+2. Create a new Vercel project and link the repository.
+3. Set these environment variables in Vercel:
+   - `MAILCHIMP_API_KEY`
+   - `MAILCHIMP_SERVER_PREFIX`
+   - `MAILCHIMP_LIST_ID`
+   - `ALLOWED_ORIGINS` (e.g., `https://lateefcobb.com,https://www.lateefcobb.com`)
+   - `INQUIRY_WEBHOOK_URL` (optional)
+4. Deploy. `vercel.json` instructs Vercel to run `api/inquiry.js` on Node 20 while serving `public/` as static files. No custom build command is required.
 
-- Deploy as a simple Node service (Render, Railway, Fly.io, etc.).
-- Provide the Mailchimp environment variables in your hosting dashboard.
-- Behind a reverse proxy/SSL terminator, ensure HTTPS is enforced so form data stays encrypted in transit.
+> Need a dedicated API domain? Update `<body data-api-base="https://api.theaili.com/api">` in `public/index.html` before deploying the static assets elsewhere (S3/CF, etc.).
 
-## Mailchimp Integration
+## Mailchimp + Webhook Flow
 
-The backend upserts each inquiry into the configured audience using Mailchimp's API and appends the briefing details as a subscriber note. If Mailchimp credentials are omitted, submissions are still logged locally and the front-end will notify visitors that their brief was received.
-
-### Front-end API Base
-
-`public/index.html` sets `data-api-base="/api"` on `<body>`. Update that attribute to point at your deployed backend origin (for example `https://api.theaili.com/api`) if you host the static site separately. The JavaScript automatically posts to that base while maintaining the same UX.
+- Every valid brief upserts (or creates) a Mailchimp audience member via the official API and appends the briefing as a subscriber note.
+- If `INQUIRY_WEBHOOK_URL` is set, the same payload is POSTed to that URL so you can notify Slack, Make, Airtable, etc.
 
 ## Project Structure
 
 ```
 .
+├── api
+│   └── inquiry.js        # Vercel serverless endpoint
 ├── public
-│   ├── index.html
-│   ├── main.js
-│   └── styles.css
-├── server.js
+│   ├── index.html        # Landing page
+│   ├── main.js           # Scroll + form logic
+│   └── styles.css        # Luxury theme
+├── server.js             # Local static dev server only
+├── vercel.json           # Vercel routing/runtime config
 ├── package.json
-├── README.md
-└── .env.example
+├── .env.example
+└── README.md
 ```
